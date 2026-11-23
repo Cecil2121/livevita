@@ -1,0 +1,51 @@
+#ifndef A52DEC_H
+#define A52DEC_H
+/* 0.5.0: AC-3 and E-AC-3 (Dolby Digital / Dolby Digital Plus) decoded in software with FFmpeg's decoder
+ * (libavcodec built with only the ac3 and eac3 decoders, LGPL: tools/build_ffmpeg_vita.sh). 5.1 and 7.1 come
+ * out as stereo. Built without it (no HAVE_A52), a52_create returns NULL and the player says the audio is not
+ * supported, as before. */
+#include <stdint.h>
+#include <stddef.h>
+
+#define A52_MAX_SAMPLES 2048            /* per channel and frame (AC-3: 1536; E-AC-3: 256..1536; AAC 1024, HE-AAC 2048) */
+#define XIPH_CHUNK      1024            /* 1.4.2: Opus / Vorbis come out in pieces of this many samples (the port wants one size) */
+#define XIPH_MAX_FRAME  8192            /* the most one Opus (5760) / Vorbis (4096) packet gives */
+
+typedef struct A52Dec A52Dec;
+
+/* one decoded frame: interleaved 16-bit stereo (or mono) PCM; src_ch = channels in the stream, eac3 = 1 for
+ * E-AC-3 */
+typedef void (*A52Out)(void *ctx, const int16_t *pcm, int samples, int rate, int ch, int src_ch, int eac3, int64_t pts);
+
+int     a52_available(void);            /* 1 if built in */
+A52Dec *a52_create(void);
+void    a52_destroy(A52Dec *d);
+/* The payload of one packet (frames may be split between packets); pts (90 kHz, -1 if none) belongs to the
+ * first frame that starts in it. */
+void    a52_feed(A52Dec *d, const uint8_t *data, size_t len, int64_t pts, A52Out out, void *ctx);
+/* 0.6.0: AAC with more than two channels (5.1, 7.1), which the Vita's decoder refuses: FFmpeg's aac decoder,
+ * mixed down to stereo the same way. NULL when FFmpeg was built without it (an older third_party/ffmpeg-vita:
+ * run tools/build_ffmpeg_vita.sh again). Fed one whole ADTS frame at a time with a52_feed_frame. */
+int     a52_aac_available(void);
+A52Dec *a52_create_aac(void);
+void    a52_feed_frame(A52Dec *d, const uint8_t *data, size_t len, int64_t pts, A52Out out, void *ctx);
+/* 1.2: one whole 5.1 ADTS frame decoded to six planes in the order L R C LFE Ls Rs (n samples each, n returned,
+ * 0 if it is not 5.1); on a decoder of its own (a52_create_aac), only to learn the Vita decoder's channel order */
+int     a52_aac_raw6(A52Dec *d, const uint8_t *frame, size_t len, float *planes, int maxn);
+/* 1.1: "clear dialogue" for 5.1 / 7.1 (Select > Audio): the centre louder in the stereo mix; for decoders
+ * created after the call (the player opens a new one when it changes) */
+void    a52_set_dialog(int on);
+int     a52_get_dialog(void);
+/* 1.3: virtual surround for 5.1 / 7.1 on headphones (vsurr.h; Sound field: Headphones), followed at once */
+void    a52_set_vsurr(int on);
+int     a52_get_vsurr(void);
+/* 1.4.2: Opus / Vorbis (WebM, Matroska) with FFmpeg's decoders; cfg = the track's CodecPrivate (Opus: OpusHead;
+ * Vorbis: the three headers, Xiph-laced), rate / ch from the track (0 = from cfg). Fed one whole packet at a time
+ * with a52_feed_frame; the sound comes out in pieces of XIPH_CHUNK samples (Vorbis frames change size, and the
+ * output port would have to be opened again for each new size). NULL when not built in. */
+int     a52_xiph_available(int opus);
+A52Dec *a52_create_xiph(int opus, const uint8_t *cfg, size_t cfg_len, int rate, int ch);
+/* frames decoded, frames that failed */
+void    a52_stats(const A52Dec *d, uint32_t *frames, uint32_t *errors);
+
+#endif

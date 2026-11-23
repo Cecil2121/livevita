@@ -1,0 +1,90 @@
+#ifndef TSDEMUX_H
+#define TSDEMUX_H
+/*
+ * MPEG-TS demuxer (portable C, no Vita dependencies).
+ *
+ *  - Push API: feed it bytes in chunks of any size, it finds packet sync itself.
+ *  - Reads PAT/PMT, picks one video and one audio stream.
+ *  - Video: whole access units (Annex-B), with a keyframe flag; the H.264 SPS is
+ *    parsed (size, profile, level, bit depth) and SPS/PPS are kept for the decoder.
+ *  - Audio: AAC (ADTS) is split into single frames with their own timestamps.
+ *  - All timestamps are in 90 kHz units, -1 when absent.
+ */
+#include <stddef.h>
+#include <stdint.h>
+
+typedef enum {
+    TS_CODEC_NONE = 0, TS_CODEC_H264, TS_CODEC_HEVC, TS_CODEC_MPEG2V,
+    TS_CODEC_AAC, TS_CODEC_AAC_LATM, TS_CODEC_MPEG_AUDIO, TS_CODEC_AC3, TS_CODEC_EAC3,
+    TS_CODEC_OTHER,
+    TS_CODEC_OPUS, TS_CODEC_VORBIS          /* 1.4.2 (Matroska / WebM only) */
+} TsCodec;
+
+#define TS_FLAG_KEYFRAME 1      /* IDR picture or recovery-point SEI */
+#define TS_FLAG_DAMAGED  2      /* packets were lost while this unit was received */
+#define TS_FLAG_INTRA    4      /* non-IDR picture whose first slice is an I slice (no recovery SEI) */
+#define TS_MAX_STREAMS   16
+#define TS_MAX_SUBS      8      /* 0.7.0: text subtitle tracks (Matroska) */
+
+typedef struct { int pid, stream_type; TsCodec codec; char lang[4]; } TsStream;   /* lang (0.5.0): ISO 639-2, "" = none */
+
+typedef struct {
+    /* program layout */
+    int program;                        /* chosen program number, -1 if none yet */
+    int nstreams;
+    TsStream streams[TS_MAX_STREAMS];
+    int video_pid, audio_pid;           /* -1 if none */
+    TsCodec video_codec, audio_codec;
+    /* H.264 (from the SPS) */
+    int width, height, profile, constraint, level, chroma_format, bit_depth;
+    int frame_mbs_only, ref_frames;
+    uint8_t sps[128]; int sps_len;      /* NAL units without start code */
+    uint8_t pps[64];  int pps_len;
+    /* AAC (from the ADTS header) */
+    int aac_object, aac_rate, aac_channels;
+    /* statistics */
+    uint64_t packets, bytes;
+    uint32_t sync_losses, cc_errors, tei_errors, scrambled_packets, pes_overflows;
+    uint32_t video_aus, keyframes, intra_aus, damaged_aus, audio_frames;
+    int64_t first_video_pts, min_video_pts, max_video_pts, first_audio_pts;
+    /* 0.7.0: text subtitle tracks (Matroska S_TEXT/UTF8, S_TEXT/ASS, S_TEXT/SSA), in the file's order */
+    int nsubs;
+    struct { int id; char lang[4]; char name[32]; int ass, forced, is_default; } subs[TS_MAX_SUBS];
+    /* 1.4.2 (Matroska): the chosen audio track's CodecPrivate for Opus / Vorbis (owned by the demuxer), its rate
+     * and channels; audio_cfg_gen changes (never 0) whenever another track's set is chosen */
+    const uint8_t *audio_cfg;
+    int audio_cfg_len, audio_cfg_rate, audio_cfg_ch;
+    unsigned audio_cfg_gen;
+} TsInfo;
+
+typedef struct {
+    void (*video)(void *ctx, const uint8_t *data, size_t len, int64_t pts, int64_t dts, int flags);
+    void (*audio)(void *ctx, const uint8_t *data, size_t len, int64_t pts);
+    void *ctx;
+    /* 0.7.0 (Matroska, may be NULL): a subtitle of track id as plain text (lines separated by '\n'; the ASS
+     * fields and the style tags taken away), from pts for dur (90 kHz; dur 0 = not given) */
+    void (*sub)(void *ctx, int id, const char *text, int64_t pts, int64_t dur);
+} TsSink;
+
+typedef struct TsDemux TsDemux;
+
+TsDemux      *ts_create(const TsSink *sink);
+void          ts_destroy(TsDemux *d);
+void          ts_feed(TsDemux *d, const uint8_t *data, size_t len);
+void          ts_flush(TsDemux *d);                 /* end of stream: emit pending units */
+const TsInfo *ts_info(const TsDemux *d);
+
+const char   *ts_codec_name(TsCodec c);
+/* 0.5.0: the audio stream to play: the one with id prefer_id (PID / MKV track number) if there is such an audio
+ * stream, else the best one in prefer_lang ("tur", "eng"...; "" = any), else the best one (AAC first). Returns
+ * the index in st, -1 if there is no audio. */
+int           ts_audio_pick(const TsStream *st, int ns, int prefer_id, const char *prefer_lang);
+/* A language code as 3 lower-case letters ("tr" / "TUR" / "tr-TR" -> "tur"); "" when it is none. */
+void          ts_lang3(const char *in, char out[4]);
+/* For the next PMT: the audio stream to choose (see ts_audio_pick). Call right after ts_create. */
+void          ts_prefer_audio(TsDemux *d, int pid, const char *lang);
+/* Parses an H.264 SPS NAL unit (nal[0] = NAL header) into the video fields of inf. 0 = ok. */
+int           ts_parse_sps(const uint8_t *nal, size_t len, TsInfo *inf);
+double        ts_video_fps(const TsInfo *i);        /* 0 if unknown */
+
+#endif
