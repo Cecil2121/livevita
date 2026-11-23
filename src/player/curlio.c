@@ -6,6 +6,7 @@
 #include "curlio.h"
 #include "netua.h"
 #include "hls.h"                        /* hls_resolve() for redirects */
+#include "httpio.h"                     /* plog() */
 #include <stdarg.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -271,11 +272,10 @@ static void conn_close(Conn *c)
     c->fd = -1;
 }
 
-static int conn_open(Conn *c, const char *host, int port, int tls, char *err, size_t errsz)
+/* One TLS handshake over the already-open socket. force12 caps the offer at TLS 1.2
+ * (some CDN edges abort mbedTLS's TLS 1.3 handshake with a fatal alert). */
+static int tls_establish(Conn *c, const char *host, int force12, char *err, size_t errsz)
 {
-    c->fd = tcp_connect(host, port, c->rq, err, errsz);
-    if (c->fd < 0) return c->fd;
-    if (!tls) return 0;
     c->tls = 1;
     mbedtls_entropy_init(&c->ent);
     mbedtls_ctr_drbg_init(&c->drbg);
@@ -287,6 +287,7 @@ static int conn_open(Conn *c, const char *host, int port, int tls, char *err, si
         mbedtls_ssl_conf_authmode(&c->conf, MBEDTLS_SSL_VERIFY_NONE);
         mbedtls_ssl_conf_rng(&c->conf, mbedtls_ctr_drbg_random, &c->drbg);
         mbedtls_ssl_conf_read_timeout(&c->conf, TICK_MS);
+        if (force12) mbedtls_ssl_conf_max_tls_version(&c->conf, MBEDTLS_SSL_VERSION_TLS1_2);
         r = mbedtls_ssl_setup(&c->ssl, &c->conf);
     }
     if (!r) r = mbedtls_ssl_set_hostname(&c->ssl, host);     /* SNI: CDNs need it */
@@ -305,6 +306,22 @@ static int conn_open(Conn *c, const char *host, int port, int tls, char *err, si
         return -1005;
     }
     return 0;
+}
+
+static int conn_open(Conn *c, const char *host, int port, int tls, char *err, size_t errsz)
+{
+    /* Try normally first; if the handshake is refused, reconnect and retry capped at TLS 1.2. */
+    for (int attempt = 0; attempt < 2; attempt++) {
+        c->fd = tcp_connect(host, port, c->rq, err, errsz);
+        if (c->fd < 0) return c->fd;
+        if (!tls) return 0;
+        int r = tls_establish(c, host, attempt, err, errsz);
+        if (r == 0) return 0;
+        conn_close(c);                                       /* drop the socket + TLS state */
+        if (r != -1005 || attempt == 1) return r;            /* retry only a refused handshake, only once */
+        plog("curlio: TLS to %s refused (%s); retrying over TLS 1.2", host, err);
+    }
+    return -1005;
 }
 
 static int conn_write(Conn *c, const char *buf, size_t len)
