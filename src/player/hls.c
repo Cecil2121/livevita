@@ -315,6 +315,15 @@ int hls_parse_media(const char *text, HlsMedia *m)
             else if (starts(s, e, "#EXT-X-KEY:")) {
                 char val[64];
                 if (attr(s + 11, e, "METHOD", val, sizeof val) && strcasecmp(val, "NONE")) m->encrypted = 1;
+            } else if (starts(s, e, "#EXT-X-DATERANGE:")) {    /* Twitch marks a stitched commercial break with a DATERANGE */
+                char cls[48], dur[24];
+                if (attr(s + 17, e, "CLASS", cls, sizeof cls) && !strcasecmp(cls, "twitch-stitched-ad")) {
+                    m->ad_break = 1;
+                    if (attr(s + 17, e, "DURATION", dur, sizeof dur)) {
+                        int d = (int)(atof(dur) * 1000);
+                        if (d > m->ad_total_ms) m->ad_total_ms = d;   /* the longest range covers the break */
+                    }
+                }
             } else if (starts(s, e, "#EXTINF:")) { dur_ms = (int)(atof(s + 8) * 1000); have_inf = 1; }
             continue;
         }

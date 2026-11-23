@@ -226,6 +226,16 @@ static void draw_video_in(int x, int y, int w, int h)
         rect(x + (w - tw) / 2 - 18, y + h / 2 - 22, tw + 36, 38, C_SHADE);
         text_center_in(x, w, y + h / 2 + 4, st && st->state == TSP_ERROR ? C_WARN : C_TEXT, 0.9f, f);
     }
+    if (st && st->ad_break && !audio_only) {                /* a stitched commercial break is playing */
+        char ab[48];
+        if (st->ad_left_ms > 0) snprintf(ab, sizeof ab, "Ad break   %ds", (st->ad_left_ms + 999) / 1000);
+        else snprintf(ab, sizeof ab, "Ad break");
+        int tw = text_w(0.75f, ab);
+        int bx = x + 18, by = y + 18;
+        rect(bx, by, tw + 30, 32, C_SHADE);
+        rect(bx, by, 5, 32, C_PURPLE);                      /* purple accent bar */
+        text(bx + 16, by + 22, C_TEXT, 0.75f, ab);
+    }
 }
 
 static void info_lines(char *l1, size_t c1, char *l2, size_t c2)

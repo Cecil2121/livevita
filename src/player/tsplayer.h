@@ -77,6 +77,8 @@ typedef struct {
     char s_lang[TSP_MAX_SUBS][4];
     char s_name[TSP_MAX_SUBS][32];      /* the track's name ("SDH", "Forced"...), "" = none */
     int s_forced[TSP_MAX_SUBS];
+    volatile int ad_break;              /* LiveVita: a Twitch stitched commercial break is playing in the stream */
+    volatile int ad_left_ms;            /* ... time left in it, when the break's DURATION is known (0 = unknown) */
 } TspStatus;
 
 /* For the next tsp_start: hd1080 = decode above 720p; hls_want = the HLS variant to choose: 0 automatic (about

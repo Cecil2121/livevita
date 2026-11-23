@@ -30,9 +30,11 @@ Not affiliated with Twitch. Streams play as Twitch serves them, ads included.
 
 ### Commercial breaks (ads)
 
-LiveVita connects straight to Twitch and plays each stream exactly as Twitch sends it. During a commercial break Twitch splices the ad segments into the same HLS stream, so the Vita simply plays them, then the live feed resumes on its own — the app doesn't need to do anything, and there's nothing to "skip."
+LiveVita connects straight to Twitch and plays each stream exactly as Twitch sends it. When Twitch serves a commercial break with **server-side ad insertion (SSAI)**, the ad is stitched into the same HLS stream, so the Vita plays the real ad segments like any other part of the stream — which means the streamer still earns the ad revenue. LiveVita reads Twitch's `#EXT-X-DATERANGE` `CLASS="twitch-stitched-ad"` markers, shows a small **"Ad break"** indicator (with a countdown when Twitch gives the break's duration), and transitions back to the live feed on its own when the break ends, reloading the stream's init segment across the splice so it doesn't stall.
 
-LiveVita does **not** implement any ad-removal proxy. The ad-free setups you may have seen on other clients route the playlist request through an external HTTPS proxy (a server that fetches the stream on your behalf from a region or path without mid-rolls and hands back a cleaned playlist). That is a separate service, not part of this app: it means trusting a third-party server with your requests, it breaks Twitch's Terms of Service, and it takes ad revenue away from the streamers you're watching. LiveVita deliberately leaves it out and talks to Twitch directly. If you ever point the app at such a proxy yourself, that's entirely your own call and outside what this project does.
+Sometimes, instead of a stitched ad, Twitch sends a silent **"Commercial break in progress"** placeholder. That's Twitch's own decision, made on their servers: they reserve some client-side ad creatives for their first-party players. LiveVita plays whatever Twitch sends and recovers cleanly either way.
+
+LiveVita does **not** implement any ad-removal proxy, and never will. The ad-free setups you may have seen on other clients route the playlist request through an external HTTPS proxy that fetches a cleaned, mid-roll-free playlist. That breaks Twitch's Terms of Service and takes ad revenue away from streamers, so this project leaves it out and talks to Twitch directly.
 
 ## 1. Get a Twitch Client ID (2 minutes, free)
 

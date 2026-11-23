@@ -181,6 +181,8 @@ struct Tsp {                            /* (1.3.1: named, declared above) */
     uint8_t *fseg;                      /* the segment being downloaded */
     size_t fseg_len, fseg_cap;
     int fseg_over;                      /* it did not fit (FSEG_MAX) */
+    uint64_t ad_end_us;                 /* when the current stitched-ad break is expected to end */
+    int ad_have_dur;                    /* its DURATION was given, so ad_end_us is meaningful */
     /* films and episodes (files that can be paused and searched) */
     int vod, vod_start_ms, vod_norange, vod_last_status;
     int vod_file;                       /* 1.3: a film on the memory card (vod_get reads the file, a range = a seek) */
@@ -4091,6 +4093,22 @@ static void read_hls(Tsp *t, uint8_t *buf)
         HlsMedia m;
         if (hls_parse_media(text, &m) < 0) { set_error_kind(t, TSP_ERRK_FORMAT, "HLS playlist without segments"); goto out; }
         if (m.encrypted) { hls_media_free(&m); set_error_kind(t, TSP_ERRK_FORMAT, "Encrypted HLS stream (AES): not supported"); goto out; }
+        if (m.ad_break) {                                     /* a Twitch stitched commercial break (served in-stream) */
+            if (!t->st.ad_break) {                            /* just started: anchor the countdown */
+                t->ad_have_dur = m.ad_total_ms > 0;
+                t->ad_end_us = now_us() + (uint64_t)(m.ad_total_ms > 0 ? m.ad_total_ms : 0) * 1000;
+                plog("tsp: ad break%s", m.ad_total_ms > 0 ? "" : " (no duration given)");
+            } else if (m.ad_total_ms > 0 && !t->ad_have_dur) {   /* duration appeared on a later refresh */
+                t->ad_have_dur = 1;
+                t->ad_end_us = now_us() + (uint64_t)m.ad_total_ms * 1000;
+            }
+            t->st.ad_break = 1;
+        } else if (t->st.ad_break) {                          /* back to content */
+            t->st.ad_break = 0;
+            t->st.ad_left_ms = 0;
+            t->ad_have_dur = 0;
+            plog("tsp: ad break over");
+        }
         if (m.fmp4 || (m.nseg && seg_is_mp4(m.seg[0].uri, m.seg[0].uri_len))) {
             /* LiveVita: fragmented MP4 segments (Twitch): the init segment first, again whenever it changes */
             if (!m.map_uri[0]) {
@@ -5141,6 +5159,10 @@ vita2d_texture *tsp_frame(int *w, int *h)
     if (t) t->ui_ticks++;
     if (!t || !t->ready) return NULL;
     uint64_t now = now_us();
+    if (t->st.ad_break && t->ad_have_dur) {                  /* keep the ad-break countdown current for the UI */
+        int64_t left = (int64_t)t->ad_end_us - (int64_t)now;
+        t->st.ad_left_ms = left > 0 ? (int)(left / 1000) : 0;
+    }
     buffer_check(t, now);
     t->ui_calls++;
     sceKernelLockMutex(t->lock, 1, NULL);

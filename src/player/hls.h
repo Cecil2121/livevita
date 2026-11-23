@@ -42,6 +42,8 @@ typedef struct {
     int encrypted;                      /* #EXT-X-KEY with a METHOD other than NONE */
     int fmp4;                           /* #EXT-X-MAP: fragmented MP4 segments */
     char map_uri[HLS_URL_MAX];          /* LiveVita: the #EXT-X-MAP URI (the fMP4 init segment), as written */
+    int ad_break;                       /* LiveVita: this playlist has a Twitch stitched-ad DATERANGE (a commercial is being served) */
+    int ad_total_ms;                    /* the ad break's DURATION, when given */
     int nseg;
     HlsSegment *seg;                    /* malloc'd, free with hls_media_free */
 } HlsMedia;
