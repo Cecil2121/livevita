@@ -3787,6 +3787,8 @@ system_http:
             if (d > 0) { t->st.dur_ms = d; plog("tsp: the server says the film is %d s long", d / 1000); }
         }
     }
+    unsigned long long clen = 0;                            /* expected body length, to catch a truncated download */
+    int have_clen = (!out && sceHttpGetResponseContentLength(req, &clen) >= 0 && clen > 0);
     total = 0;
     while (!stopping(t)) {
         if (out) {
@@ -3805,6 +3807,14 @@ system_http:
             check_stall(t);
         }
         total += n;
+    }
+    /* A segment cut short by the network (connection dropped mid-transfer) would otherwise be handed to the
+     * demuxer as if whole: a partial fMP4 segment decodes as blocky / distorted pictures, or none. Drop it so
+     * the caller retries or skips, and the picture holds until the next complete segment. */
+    if (t->fmp4_on && have_clen && total >= 0 && (unsigned long long)total < clen && !stopping(t)) {
+        plog("tsp: fMP4 segment truncated (%lld of %llu bytes), dropping it", (long long)total, clen);
+        t->fseg_over = 1;                                   /* so the whole-segment feed is skipped */
+        total = -1;                                         /* so the caller retries, then skips */
     }
     if (out && total >= 0) out[total] = 0;
 done:
