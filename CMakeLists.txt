@@ -51,6 +51,7 @@ add_executable(${PROJECT_NAME}.elf
   src/favcat.c
   src/favchan.c
   src/tpemote.c
+  src/jingle.c
   src/playerui.c
   src/ui.c
   src/chat.c
@@ -101,6 +102,7 @@ vita_create_vpk(Twitch.vpk ${VITA_TITLEID} ${PROJECT_NAME}.self
   FILE sce_sys/livearea/contents/bg.png sce_sys/livearea/contents/bg.png
   FILE sce_sys/livearea/contents/startup.png sce_sys/livearea/contents/startup.png
   FILE sce_sys/livearea/contents/template.xml sce_sys/livearea/contents/template.xml
+  FILE jingle.raw jingle.raw
   FILE LICENSE LICENSE.txt
   FILE THIRD_PARTY_NOTICES.md THIRD_PARTY_NOTICES.txt
   FILE third_party/VitaIPTV-LICENSE.txt licenses/VitaIPTV-LICENSE.txt

@@ -2,6 +2,7 @@
  * main.c: start-up, the app state, network jobs on a worker thread, and switching between the screens
  * (sign-in, home in the handheld or TV layout, player). Chat and pictures have threads of their own. */
 #include "app.h"
+#include "jingle.h"
 #include "applog.h"
 #include "chat.h"
 #include "favcat.h"
@@ -739,6 +740,7 @@ int main(void)
     scePowerSetGpuXbarClockFrequency(166);
     net_init();
     input_init();
+    jingle_play();                                           /* a short startup sound, on its own thread */
 
     /* hardware: PS TV (or a DualShock on a Vita) -> TV layout */
     app.is_pstv = detect_pstv(&app.ext_pad);
