@@ -567,7 +567,11 @@ void app_logout(void)
 
 static void start_playback(const char *url)
 {
-    tsp_set_options(1, 1080);                                /* HD decoder on: the variant is already chosen, so 1080p/720p60 only arrive when picked */
+    /* The HD decoder (internal entry points) is only needed above 720p30 — i.e. for the 720p60
+     * and experimental 1080p60 options. Lower qualities keep the proven public decoder, which is
+     * steadier (the heavier HD path can flicker/glitch on ordinary 720p30 / 480p streams). */
+    int hd = (app.quality == TWQ_1080P60 || app.quality == TWQ_720P60);
+    tsp_set_options(hd, hd ? 1080 : 720);
     int r = tsp_start(url);
     plog("player: start %s (%s) -> %d", app.playing.login, res_label, r);
     if (r != 0) { app_set_status("The player could not start (see log.txt)"); app_back_from_player(); return; }
