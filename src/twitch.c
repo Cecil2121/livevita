@@ -346,11 +346,40 @@ static int list(const char *url, const char *what, TwStream *out, int max, int s
     return r;
 }
 
+/* Fill s->avatar (profile_image_url) for a list of streams, 100 ids per /helix/users call. */
+static void tw_fill_avatars(TwStream *out, int n)
+{
+    for (int base = 0; base < n; base += 100) {
+        char *url = malloc(4096), *resp = NULL;
+        if (!url) break;
+        int k = snprintf(url, 4096, "https://api.twitch.tv/helix/users?");
+        for (int i = base; i < n && i < base + 100 && k < 4000; i++) k += snprintf(url + k, 4096 - (size_t)k, "%sid=%s", i > base ? "&" : "", out[i].user_id);
+        if (helix(url, &resp) == 200) {
+            Json j;
+            if (!json_parse(&j, resp)) {
+                int data = json_key(&j, 0, "data");
+                for (int i = 0; i < json_size(&j, data); i++) {
+                    int o = json_index(&j, data, i);
+                    char id[24], av[220];
+                    json_get_str(&j, o, "id", id, sizeof id);
+                    json_get_str(&j, o, "profile_image_url", av, sizeof av);
+                    for (int m = base; m < n && m < base + 100; m++) if (!strcmp(out[m].user_id, id)) snprintf(out[m].avatar, sizeof out[m].avatar, "%s", av);
+                }
+                json_free(&j);
+            }
+        }
+        free(resp);
+        free(url);
+    }
+}
+
 int tw_followed(TwStream *out, int max)
 {
     char url[200];
     snprintf(url, sizeof url, "https://api.twitch.tv/helix/streams/followed?user_id=%s&first=100", g_user_id);
-    return list(url, "Loading followed channels", out, max, 0);
+    int n = list(url, "Loading followed channels", out, max, 0);
+    if (n > 0) tw_fill_avatars(out, n);                      /* small home tiles show the streamer's profile picture */
+    return n;
 }
 
 static int cmp_name(const void *a, const void *b) { return strcasecmp(((const TwStream *)a)->name, ((const TwStream *)b)->name); }
@@ -395,29 +424,7 @@ int tw_followed_offline(TwStream *out, int max)
         if (!cursor[0]) break;
     }
     free(live);
-    /* their profile pictures, 100 at a time */
-    for (int base = 0; base < n; base += 100) {
-        char *url = malloc(4096), *resp = NULL;
-        if (!url) break;
-        int k = snprintf(url, 4096, "https://api.twitch.tv/helix/users?");
-        for (int i = base; i < n && i < base + 100 && k < 4000; i++) k += snprintf(url + k, 4096 - (size_t)k, "%sid=%s", i > base ? "&" : "", out[i].user_id);
-        if (helix(url, &resp) == 200) {
-            Json j;
-            if (!json_parse(&j, resp)) {
-                int data = json_key(&j, 0, "data");
-                for (int i = 0; i < json_size(&j, data); i++) {
-                    int o = json_index(&j, data, i);
-                    char id[24], av[220];
-                    json_get_str(&j, o, "id", id, sizeof id);
-                    json_get_str(&j, o, "profile_image_url", av, sizeof av);
-                    for (int m = base; m < n && m < base + 100; m++) if (!strcmp(out[m].user_id, id)) snprintf(out[m].avatar, sizeof out[m].avatar, "%s", av);
-                }
-                json_free(&j);
-            }
-        }
-        free(resp);
-        free(url);
-    }
+    tw_fill_avatars(out, n);                                 /* their profile pictures */
     qsort(out, (size_t)n, sizeof *out, cmp_name);
     return n;
 }

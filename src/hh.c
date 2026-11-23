@@ -83,9 +83,15 @@ static void tile_caption(int x, int y, int w, int h, const char *name, const cha
 static void channel_tile(const TwStream *s, Box b, int big)
 {
     int narrow = b.w < 150;
-    const char *url = big && s->thumb_big[0] ? s->thumb_big : s->thumb;
-    if (s->live && url[0]) draw_picture(img_get(url), b.x, b.y, b.w, b.h);
-    else rect(b.x, b.y, b.w, b.h, C_HH_TILE);
+    if (narrow && s->avatar[0]) {                            /* small tiles: the streamer's profile picture, as a centered icon */
+        rect(b.x, b.y, b.w, b.h, C_HH_TILE);
+        int d = b.w < b.h ? b.w : b.h;
+        draw_picture(img_get(s->avatar), b.x + (b.w - d) / 2, b.y + (b.h - d) / 2, d, d);
+    } else {
+        const char *url = big && s->thumb_big[0] ? s->thumb_big : s->thumb;
+        if (s->live && url[0]) draw_picture(img_get(url), b.x, b.y, b.w, b.h);
+        else rect(b.x, b.y, b.w, b.h, C_HH_TILE);
+    }
     if (!s->live) {
         rect(b.x + 10, b.y + 10, 72, 22, C_SHADE);
         text_center_in(b.x + 10, 72, b.y + 27, C_DIM, 0.72f, "OFFLINE");
