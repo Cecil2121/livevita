@@ -642,9 +642,11 @@ static void draw_following_page(void)
     static int ord[MAX_STREAMS];
     int n = follow_order(ord);
     if (!n) {
-        draw_message(0, SCREEN_W, FCY, loading || !L->loaded ? "Loading..." : L->err[0] ? L->err
+        draw_message(0, SCREEN_W, FCY, loading || !L->loaded ? "Loading..."
+                     : !app.signed_in ? "Log in to see the channels you follow on Twitch, or pin channels here with the heart."
+                     : L->err[0] ? L->err
                      : app.follow_sort == FSORT_OFFLINE ? "Everyone you follow is live right now." : "None of the channels you follow are live right now.",
-                     loading || !L->loaded, L->err[0] && !loading);
+                     loading || !L->loaded, L->err[0] && !loading && app.signed_in);
     } else {
         if (L->sel >= n) L->sel = n - 1;
         static float cur;                                    /* slides toward the selection */
@@ -779,10 +781,10 @@ static void draw_profile_page(void)
         if (app.prof_focus == PFS_BTN) outline(PF_BTN_X, PF_BTN_Y, 197, 56, 4, C_HH_SEL);
     }
     const char *selname = NULL;
-    /* Followed Channels (saved on this Vita) */
-    text(40, PF_CH_Y - 12, C_TEXT, 0.95f, "Followed Channels");
+    /* Local Pins: channels saved on this Vita (your real Twitch follows are under "Followed Channels" on the home screen) */
+    text(40, PF_CH_Y - 12, C_TEXT, 0.95f, "Local Pins (this Vita)");
     int nc = favchan_count();
-    if (!nc) text(40, PF_CH_Y + 42, C_FAINT, 0.78f, "Press the heart on a stream to follow it here (saved on this Vita).");
+    if (!nc) text(40, PF_CH_Y + 42, C_FAINT, 0.78f, "Press the heart on a stream to pin it here. Your Twitch account follows show under Followed Channels.");
     for (int i = 0; i < nc; i++) {
         Box b = { 40 + i * (PF_CH_S + PF_TILE_G), PF_CH_Y, PF_CH_S, PF_CH_S };
         if (b.x + b.w > SCREEN_W - 20) { text(b.x, b.y + 40, C_FAINT, 0.8f, "..."); break; }

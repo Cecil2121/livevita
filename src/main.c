@@ -156,7 +156,9 @@ static int merge_saved(int list, TwStream *out, int n, int max)
 {
     static TwStream saved[FAVCHAN_MAX], live[FAVCHAN_MAX];
     int ns = favchan_snapshot(saved, FAVCHAN_MAX);
-    if (!ns || n < 0) return n;
+    if (!ns) return n;                                       /* no local pins to merge */
+    int logged_out = (n < 0);                               /* account follows unavailable (not signed in / 401): pins are the fallback */
+    if (logged_out) n = 0;
     int nl = tw_streams_of(saved, ns, live, FAVCHAN_MAX);
     if (nl < 0) nl = 0;
     if (list == LIST_FOLLOWING) {                            /* the saved ones that are live */
@@ -165,13 +167,18 @@ static int merge_saved(int list, TwStream *out, int n, int max)
             for (int k = 0; k < n && !dup; k++) if (!strcmp(out[k].user_id, live[i].user_id)) { dup = 1; out[k].saved = 1; }
             if (!dup) { out[n] = live[i]; out[n].saved = 1; n++; }
         }
+        for (int i = 0; logged_out && i < ns && n < max; i++) {   /* logged out: show the pins we couldn't live-check, as offline */
+            int dup = 0;
+            for (int k = 0; k < n; k++) if (!strcmp(out[k].user_id, saved[i].user_id)) dup = 1;
+            if (!dup) { out[n] = saved[i]; out[n].live = 0; out[n].saved = 1; n++; }
+        }
         return n;
     }
     for (int i = 0; i < ns && n < max; i++) {                /* LIST_FOLLOW_OFF: the saved ones that are not live */
         int is_live = 0, dup = 0;
         for (int k = 0; k < nl; k++) if (!strcmp(live[k].user_id, saved[i].user_id)) is_live = 1;
         for (int k = 0; k < n; k++) if (!strcmp(out[k].user_id, saved[i].user_id)) { dup = 1; out[k].saved = 1; }
-        if (!is_live && !dup) { out[n] = saved[i]; out[n].live = 0; n++; }
+        if (!is_live && !dup) { out[n] = saved[i]; out[n].live = 0; out[n].saved = 1; n++; }
     }
     qsort(out, (size_t)n, sizeof *out, cmp_stream_name);
     return n;

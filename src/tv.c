@@ -433,10 +433,10 @@ static void draw_profile(void)
         rect(30, 196, 170, 44, foc ? T_FOCUS : T_PANEL);
         text_center_in(30, 170, 224, foc ? T_BG : T_TEXT, 0.9f, "Log in");
     } else if (g_prof_row == 0) g_prof_row = 1;
-    /* Channels You Follow (saved on this Vita) */
+    /* Local Pins: channels saved on this Vita (your real Twitch follows are the "Live Channels You Follow" row on Home) */
     int nc = favchan_count();
-    text(30, 248, T_DIM, 0.85f, "Channels You Follow");
-    if (!nc) text(30, 286, T_DIM, 0.72f, "Press the heart on a stream to follow it here (saved on this Vita).");
+    text(30, 248, T_DIM, 0.85f, "Local Pins (this Vita)");
+    if (!nc) text(30, 286, T_DIM, 0.72f, "Press the heart on a stream to pin it here. Your Twitch follows are on the Home screen.");
     for (int i = 0; i < nc; i++) {
         int x = 30 + i * 100;
         if (x + 88 > SCREEN_W) break;
