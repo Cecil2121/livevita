@@ -28,6 +28,12 @@ An unofficial Twitch viewer for the PS Vita and PS TV (homebrew: HENkaku / Ensō
 
 Not affiliated with Twitch. Streams play as Twitch serves them, ads included.
 
+### Commercial breaks (ads)
+
+LiveVita connects straight to Twitch and plays each stream exactly as Twitch sends it. During a commercial break Twitch splices the ad segments into the same HLS stream, so the Vita simply plays them, then the live feed resumes on its own — the app doesn't need to do anything, and there's nothing to "skip."
+
+LiveVita does **not** implement any ad-removal proxy. The ad-free setups you may have seen on other clients route the playlist request through an external HTTPS proxy (a server that fetches the stream on your behalf from a region or path without mid-rolls and hands back a cleaned playlist). That is a separate service, not part of this app: it means trusting a third-party server with your requests, it breaks Twitch's Terms of Service, and it takes ad revenue away from the streamers you're watching. LiveVita deliberately leaves it out and talks to Twitch directly. If you ever point the app at such a proxy yourself, that's entirely your own call and outside what this project does.
+
 ## 1. Get a Twitch Client ID (2 minutes, free)
 
 1. Go to <https://dev.twitch.tv/console> and sign in. Twitch asks you to turn on two-factor authentication for developer apps.
