@@ -116,10 +116,16 @@ Twitch removed the ability for apps to follow channels on your account in 2021, 
 - **Chat:** On / Off.
 - **Account:** sign out.
 
+## Streaming performance and Wi-Fi
+
+Higher qualities (720p60 and the experimental 1080p60) need steady bandwidth, and the Vita's Wi-Fi is the usual bottleneck. On LiveVita's side the network path is already tuned about as hard as an ordinary app can manage: it opens the stream connection with a 512 KB TCP receive buffer (the largest the Vita accepts — bigger is refused), races the connection attempts, and keeps the socket busy with large reads. There isn't much more an app running in userland can do, because the radio's power-saving and channel width are controlled by the system Wi-Fi driver, which an app can't touch.
+
+If you want more out of the Wi-Fi itself, that lives at the system level, not in this app. A separate taiHEN plugin, [vita-turbo-wifi](https://github.com/juanjsebgarcia/vita-turbo-wifi), patches the Vita's Wi-Fi driver to disable power-save (lower latency), optionally use 40 MHz channels (higher link rate) and keep the connection alive. It benefits everything on the console, LiveVita included, and is the realistic way to get smoother HD playback. It is a third-party kernel plugin that requires HENkaku/Ensō and supports only certain firmwares — install and use it at your own risk; it is not part of LiveVita and isn't needed to run the app. LiveVita works fine on stock Wi-Fi at 480p/720p30.
+
 ## Troubleshooting
 
-- **Stutters:** choose 360p30 or 480p30, and stay close to your router.
-- **"This channel only streams above 720p":** the channel has no smaller versions (Twitch only adds them for some channels). The Vita can't decode 1080p. Try Audio only.
+- **Stutters:** choose 360p30 or 480p30, and stay close to your router. 720p60 and 1080p60 want strong Wi-Fi.
+- **"This channel only streams above 720p":** the channel has no smaller versions (Twitch only adds them for some channels). 1080p is available only through the experimental quality option and may not decode smoothly; otherwise try Audio only.
 - **Chat says "reading only":** sign out and back in once to grant the chat permission.
 - **"Getting a sign-in code" fails:** check the Client ID, and that the Twitch app's Client Type is **Public**.
 - **Anything else:** LiveVita writes a log to `ux0:data/LiveVita/log.txt`, and the previous run's log to `log_prev.txt`.
