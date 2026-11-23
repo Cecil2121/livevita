@@ -11,8 +11,8 @@ endif()
 project(LiveVita C)
 include("${VITASDK}/share/vita.cmake" REQUIRED)
 
-set(VITA_APP_NAME "Twitch")
-set(VITA_TITLEID  "LVTW00001")   # unchanged: same install slot and ux0:data path, so it works exactly as before
+set(VITA_APP_NAME "LiveVita")
+set(VITA_TITLEID  "LVTW00001")
 set(VITA_VERSION  "02.00")
 set(APP_VERSION   "v2.0.0")
 
@@ -95,7 +95,7 @@ target_link_libraries(${PROJECT_NAME}.elf
 )
 
 vita_create_self(${PROJECT_NAME}.self ${PROJECT_NAME}.elf)
-vita_create_vpk(Twitch.vpk ${VITA_TITLEID} ${PROJECT_NAME}.self
+vita_create_vpk(${PROJECT_NAME}.vpk ${VITA_TITLEID} ${PROJECT_NAME}.self
   VERSION ${VITA_VERSION}
   NAME ${VITA_APP_NAME}
   FILE sce_sys/icon0.png sce_sys/icon0.png

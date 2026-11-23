@@ -45,10 +45,10 @@ if errorlevel 1 (
     goto :end
 )
 
-if exist "Twitch.vpk" (
+if exist "LiveVita.vpk" (
     echo.
-    echo  Success! Copy Twitch.vpk to your Vita and install it with VitaShell.
-    explorer /select,"%~dp0Twitch.vpk"
+    echo  Success! Copy LiveVita.vpk to your Vita and install it with VitaShell.
+    explorer /select,"%~dp0LiveVita.vpk"
 )
 goto :end
 

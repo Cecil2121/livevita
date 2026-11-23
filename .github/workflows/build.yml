@@ -1,5 +1,5 @@
-# Builds Twitch.vpk on GitHub. Runs on every push and by hand (Actions tab > Build VPK > Run workflow).
-# The finished VPK is attached to the run as "Twitch-vpk" (a zip containing Twitch.vpk).
+# Builds LiveVita.vpk on GitHub. Runs on every push and by hand (Actions tab > Build VPK > Run workflow).
+# The finished VPK is attached to the run as "LiveVita-vpk" (a zip containing LiveVita.vpk).
 #
 # Optional: Settings > Secrets and variables > Actions > Variables > New repository variable
 #   Name: TWITCH_CLIENT_ID   Value: your app's Client ID from dev.twitch.tv/console
@@ -38,5 +38,5 @@ jobs:
 
       - uses: actions/upload-artifact@v4
         with:
-          name: Twitch-vpk
-          path: build/Twitch.vpk
+          name: LiveVita-vpk
+          path: build/LiveVita.vpk
