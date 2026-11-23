@@ -4,6 +4,7 @@
 #include "player/curlio.h"
 #include <stdio.h>                      /* (before jpeglib.h, which uses FILE) */
 #include <jpeglib.h>
+#include <png.h>
 #include <pthread.h>
 #include <setjmp.h>
 #include <stdint.h>
@@ -109,6 +110,64 @@ static vita2d_texture *load_jpeg(const uint8_t *buf, size_t len)
     return tex;
 }
 
+/* ---- PNG: decoded here instead of with vita2d_load_PNG_buffer. That loader runs both
+ * png_set_tRNS_to_alpha and png_set_filler on a palette-or-grayscale PNG that carries tRNS
+ * transparency, so the 0xFF filler overwrites the real alpha and the picture comes out
+ * opaque -- which is exactly what emotes (often palette PNGs with tRNS) are. This path
+ * normalises every colour type to RGBA8 and adds a filler only when there is no alpha. */
+typedef struct { const uint8_t *data; size_t len, off; } PngSrc;
+
+static void png_read_mem(png_structp png, png_bytep out, png_size_t n)
+{
+    PngSrc *s = (PngSrc *)png_get_io_ptr(png);
+    if (!s || s->off + n > s->len) { png_error(png, "short PNG"); return; }
+    memcpy(out, s->data + s->off, n);
+    s->off += n;
+}
+
+static vita2d_texture *load_png(const uint8_t *buf, size_t len)
+{
+    png_structp png = png_create_read_struct(PNG_LIBPNG_VER_STRING, NULL, NULL, NULL);
+    if (!png) return NULL;
+    png_infop info = png_create_info_struct(png);
+    if (!info) { png_destroy_read_struct(&png, NULL, NULL); return NULL; }
+    vita2d_texture *volatile tex = NULL;
+    png_bytep *volatile rows = NULL;
+    if (setjmp(png_jmpbuf(png))) {                              /* a broken / unsupported PNG */
+        if (tex) vita2d_free_texture(tex);
+        free(rows);
+        png_destroy_read_struct(&png, &info, NULL);
+        return NULL;
+    }
+    PngSrc src = { buf, len, 0 };
+    png_set_read_fn(png, &src, png_read_mem);
+    png_read_info(png, info);
+    png_uint_32 w = 0, h = 0;
+    int depth = 0, color = 0;
+    png_get_IHDR(png, info, &w, &h, &depth, &color, NULL, NULL, NULL);
+    if (!w || !h || w > (png_uint_32)MAX_TEX_SIDE || h > (png_uint_32)MAX_TEX_SIDE) png_error(png, "bad PNG size");
+    int has_alpha = (color & PNG_COLOR_MASK_ALPHA) || png_get_valid(png, info, PNG_INFO_tRNS);
+    if (color == PNG_COLOR_TYPE_PALETTE) png_set_palette_to_rgb(png);
+    if (color == PNG_COLOR_TYPE_GRAY && depth < 8) png_set_expand_gray_1_2_4_to_8(png);
+    if (png_get_valid(png, info, PNG_INFO_tRNS)) png_set_tRNS_to_alpha(png);   /* real alpha */
+    if (depth == 16) png_set_strip_16(png);
+    if (color == PNG_COLOR_TYPE_GRAY || color == PNG_COLOR_TYPE_GRAY_ALPHA) png_set_gray_to_rgb(png);
+    if (!has_alpha) png_set_filler(png, 0xFF, PNG_FILLER_AFTER);   /* RGB -> opaque RGBA (only when no alpha) */
+    png_read_update_info(png, info);
+    tex = vita2d_create_empty_texture_format(w, h, SCE_GXM_TEXTURE_FORMAT_A8B8G8R8);
+    if (!tex) png_error(png, "no texture");
+    uint8_t *dst = vita2d_texture_get_datap(tex);
+    unsigned stride = vita2d_texture_get_stride(tex);
+    rows = (png_bytep *)malloc(sizeof(png_bytep) * h);
+    if (!rows) png_error(png, "no rows");
+    for (png_uint_32 y = 0; y < h; y++) rows[y] = dst + (size_t)y * stride;
+    png_read_image(png, rows);
+    free(rows);
+    rows = NULL;
+    png_destroy_read_struct(&png, &info, NULL);
+    return tex;
+}
+
 static volatile int g_logged;                               /* (the first pictures are logged, to see what happens) */
 
 static void *worker(void *arg)
@@ -187,7 +246,7 @@ void img_frame(void)
         Slot *s = &g_slot[i];
         if (s->state != S_LOADED) continue;
         vita2d_texture *t = NULL;
-        if (s->len > 8 && !memcmp(s->data, "\x89PNG", 4)) t = vita2d_load_PNG_buffer(s->data);
+        if (s->len > 8 && !memcmp(s->data, "\x89PNG", 4)) t = load_png(s->data, s->len);
         else if (s->len > 3 && s->data[0] == 0xFF && s->data[1] == 0xD8) t = load_jpeg(s->data, s->len);
         if (!t) plog("img: could not decode %s (%u bytes, starts %02X %02X %02X %02X)", s->url, (unsigned)s->len,
                      s->data[0], s->data[1], s->data[2], s->data[3]);
