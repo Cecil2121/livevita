@@ -17,7 +17,7 @@
  * request the twitch.tv website and other third-party players make). Not a secret. */
 #define WEB_PLAYER_CLIENT_ID "kimne78kx3ncx6brgo4mv6wki5h1ko"
 
-const char *const TWQ_NAME[TWQ_COUNT] = { "720p60", "720p30", "480p30", "360p30", "Audio only" };
+const char *const TWQ_NAME[TWQ_COUNT] = { "1080p60 (experimental)", "720p60", "720p30", "480p30", "360p30", "Audio only" };
 
 static char g_client_id[64];
 static char g_access[128], g_refresh[128];
@@ -665,12 +665,13 @@ int tw_pick_variant(const char *master, int quality, char *url, size_t cap, char
     if (quality == TWQ_AUDIO) {
         for (int i = 0; i < n; i++) if (v[i].audio && (best < 0 || v[i].bw > v[best].bw)) best = i;
     } else {
-        int max_h = (quality == TWQ_720P60 || quality == TWQ_720P30) ? 720 : quality == TWQ_480P30 ? 480 : 360;
-        int allow60 = (quality == TWQ_720P60);              /* only 720p60 lets a 60 fps variant through */
+        int max_h = quality == TWQ_1080P60 ? 1080 : (quality == TWQ_720P60 || quality == TWQ_720P30) ? 720 : quality == TWQ_480P30 ? 480 : 360;
+        int allow60 = (quality == TWQ_1080P60 || quality == TWQ_720P60);   /* 1080p and 720p60 let a 60 fps variant through */
+        int hard = quality == TWQ_1080P60 ? 1080 : 720;     /* never pick above this, even as a last resort */
         for (int pass = 0; pass < 3 && best < 0; pass++) {
             for (int i = 0; i < n; i++) {
                 const Var *x = &v[i];
-                if (x->audio || !x->avc || x->h <= 0 || x->h > 720) continue;
+                if (x->audio || !x->avc || x->h <= 0 || x->h > hard) continue;
                 if (pass < 2 && x->h > max_h) continue;
                 if (!allow60 && x->fps > 31) continue;      /* the Vita decodes 30 fps most smoothly */
                 if (best < 0) { best = i; continue; }
