@@ -55,18 +55,18 @@ LiveVita does **not** implement any ad-removal proxy, and never will. The ad-fre
    - The first time, it offers to install WSL, Microsoft's free Ubuntu-inside-Windows. Say yes, restart your PC, set a Linux username and password when Ubuntu opens, then run the .bat again.
    - Paste your Client ID when it asks (right-click pastes). It's remembered for next time.
    - The first build also downloads the Vita build tools (10-20 minutes). Later builds take 1-2 minutes.
-3. When it finishes, File Explorer opens with **LiveVita.vpk** selected.
+3. When it finishes, File Explorer opens with **Twitch.vpk** selected.
 
 ### Option B: on GitHub (nothing to install)
 
 1. Create a free account at <https://github.com> and a **New repository**.
 2. Upload this whole folder, including the `.github` folder. On a Mac, press Cmd+Shift+. in Finder to see it.
 3. Optional: **Settings → Secrets and variables → Actions → Variables → New repository variable**, with name `TWITCH_CLIENT_ID` and your Client ID as the value.
-4. **Actions → Build VPK → Run workflow**. After about 5 minutes, download **LiveVita-vpk** from the finished run.
+4. **Actions → Build VPK → Run workflow**. After about 5 minutes, download **Twitch-vpk** from the finished run.
 
 ## 3. Install and run
 
-1. Copy `LiveVita.vpk` to your Vita (VitaShell over USB or FTP) and install it from VitaShell.
+1. Copy `Twitch.vpk` to your Vita (VitaShell over USB or FTP) and install it from VitaShell.
 2. If the Client ID isn't built in, create `ux0:data/LiveVita/client_id.txt` containing only the Client ID.
 3. Start LiveVita, select **Log In**, and enter the code it shows at twitch.tv/activate.
 

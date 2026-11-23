@@ -1,5 +1,5 @@
 #!/bin/bash
-# Builds LiveVita.vpk inside WSL (Ubuntu). Started by Build-VPK.bat; also works on its own:
+# Builds Twitch.vpk inside WSL (Ubuntu). Started by Build-VPK.bat; also works on its own:
 #   bash tools/build_vpk.sh [TwitchClientID]
 # First run: installs the build tools and VitaSDK into ~/vitasdk (10-20 minutes). Later runs take 1-2 minutes.
 set -euo pipefail
@@ -47,7 +47,7 @@ rm -rf "$BUILD"
 cmake -S "$PROJECT" -B "$BUILD" -DLV_CLIENT_ID="$CID"
 cmake --build "$BUILD" -j"$(nproc)"
 
-cp "$BUILD/LiveVita.vpk" "$PROJECT/LiveVita.vpk"
-step "Done: LiveVita.vpk is in the LiveVita folder"
+cp "$BUILD/Twitch.vpk" "$PROJECT/Twitch.vpk"
+step "Done: Twitch.vpk is in the LiveVita folder"
 if [ -n "$CID" ]; then echo "Your Client ID is built in."
 else echo "No Client ID built in: put it in ux0:data/LiveVita/client_id.txt on your Vita."; fi
