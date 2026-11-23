@@ -567,7 +567,7 @@ void app_logout(void)
 
 static void start_playback(const char *url)
 {
-    tsp_set_options(0, 720);                                 /* (a single variant: the size was chosen already) */
+    tsp_set_options(1, 1080);                                /* HD decoder on: the variant is already chosen, so 1080p/720p60 only arrive when picked */
     int r = tsp_start(url);
     plog("player: start %s (%s) -> %d", app.playing.login, res_label, r);
     if (r != 0) { app_set_status("The player could not start (see log.txt)"); app_back_from_player(); return; }
