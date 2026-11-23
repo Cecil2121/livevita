@@ -5,7 +5,7 @@ An unofficial Twitch viewer for the PS Vita and PS TV (homebrew: HENkaku / Ensō
 > ### 🤖 Vibe coded
 > This project was **vibe coded** — written end-to-end in conversation with an AI assistant (Claude), from prompts rather than hand-written line by line. It has been compile-checked against the real VitaSDK headers and its logic unit-tested on a PC, but it has **not** been run on real Vita hardware by the author. Treat it as a starting point: read it, test it, and fix what breaks. No warranty. See [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md) for reused components.
 
-- **Watch live streams** with the Vita's hardware H.264 decoder at **720p60**, 720p30, 480p30 or 360p30, or audio only — plus an **experimental 1080p60** option for channels that offer source quality (see the note below). LiveVita asks Twitch for plain MPEG-TS HLS streams and also plays fragmented-MP4 HLS if Twitch sends that instead.
+- **Watch live streams** with the Vita's hardware H.264 decoder at **720p60**, 720p30, 480p30 or 360p30, or audio only. LiveVita asks Twitch for plain MPEG-TS HLS streams and also plays fragmented-MP4 HLS if Twitch sends that instead.
 - **Live chat:** read any channel's chat right away, even signed out of chat. It shows name colors, badges (broadcaster, mod, VIP, sub...), timestamps and emotes — including **third-party emotes (BTTV and FFZ)**, the ones people actually type. Send messages with the on-screen keyboard. The last 100 messages are kept in memory.
 - **Theater mode:** video on the left (70%) and chat on the right (30%). Square switches to full screen.
 - **Following, Featured (top live), Games (browse by category) and Search.** Cards show preview thumbnails, LIVE and viewer counts. The player shows the title, category, viewers and uptime.
@@ -98,7 +98,7 @@ LiveVita does **not** implement any ad-removal proxy, and never will. The ad-fre
 | Triangle (or tap the chat box) | Type a chat message |
 | Up / Down (or drag the chat) | Scroll chat back / return to live |
 | L / R | Lower / higher quality |
-| START | Quality menu (1080p60 experimental, 720p60, 720p30, 480p30, 360p30, Audio only) |
+| START | Quality menu (720p60, 720p30, 480p30, 360p30, Audio only) |
 | SELECT | Playback stats |
 
 ## Profile and followed categories
@@ -112,22 +112,21 @@ Twitch removed the ability for apps to follow channels on your account in 2021, 
 
 ## Settings
 
-- **Video quality:** 720p60, 720p30, 480p30 (default), 360p30 or Audio only, set in Options or from the in-player quality menu (START). 60 fps is only used when you pick a 60 fps option.
-- **Experimental 1080p60:** source quality, for channels that broadcast it. It uses the Vita's HD decoder path (1920×1088). It's marked experimental because the Vita can drop frames decoding 1080p60 in real time, and some channels' 1080p segments are refused by Twitch on the device (you'll see segment errors) while 720p plays fine. If 1080p is rough, drop to 720p60 or 720p30 — L on the pad lowers the quality on the fly.
+- **Video quality:** 720p60, 720p30, 480p30 (default), 360p30 or Audio only, set in Options or from the in-player quality menu (START). 60 fps is only used when you pick a 60 fps option. 1080p is not offered: the Vita can't decode it reliably, and the HD decoder path needed for it crashed some consoles, so LiveVita stays on the stable decoder that tops out at 720p.
 - **Layout:** Auto (PS TV or a DualShock → TV layout, otherwise Handheld), Handheld or TV.
 - **Chat:** On / Off.
 - **Account:** sign out.
 
 ## Streaming performance and Wi-Fi
 
-Higher qualities (720p60 and the experimental 1080p60) need steady bandwidth, and the Vita's Wi-Fi is the usual bottleneck. On LiveVita's side the network path is already tuned about as hard as an ordinary app can manage: it opens the stream connection with a 512 KB TCP receive buffer (the largest the Vita accepts — bigger is refused), races the connection attempts, and keeps the socket busy with large reads. There isn't much more an app running in userland can do, because the radio's power-saving and channel width are controlled by the system Wi-Fi driver, which an app can't touch.
+Higher quality (720p60) needs steady bandwidth, and the Vita's Wi-Fi is the usual bottleneck. On LiveVita's side the network path is already tuned about as hard as an ordinary app can manage: it opens the stream connection with a 512 KB TCP receive buffer (the largest the Vita accepts — bigger is refused), races the connection attempts, and keeps the socket busy with large reads. There isn't much more an app running in userland can do, because the radio's power-saving and channel width are controlled by the system Wi-Fi driver, which an app can't touch.
 
 If you want more out of the Wi-Fi itself, that lives at the system level, not in this app. A separate taiHEN plugin, [vita-turbo-wifi](https://github.com/juanjsebgarcia/vita-turbo-wifi), patches the Vita's Wi-Fi driver to disable power-save (lower latency), optionally use 40 MHz channels (higher link rate) and keep the connection alive. It benefits everything on the console, LiveVita included, and is the realistic way to get smoother HD playback. It is a third-party kernel plugin that requires HENkaku/Ensō and supports only certain firmwares — install and use it at your own risk; it is not part of LiveVita and isn't needed to run the app. LiveVita works fine on stock Wi-Fi at 480p/720p30.
 
 ## Troubleshooting
 
-- **Stutters:** choose 360p30 or 480p30, and stay close to your router. 720p60 and 1080p60 want strong Wi-Fi.
-- **"This channel only streams above 720p":** the channel has no smaller versions (Twitch only adds them for some channels). 1080p is available only through the experimental quality option and may not decode smoothly; otherwise try Audio only.
+- **Stutters:** choose 360p30 or 480p30, and stay close to your router. 720p60 wants strong Wi-Fi.
+- **"This channel only streams above 720p":** the channel has no smaller versions (Twitch only adds them for some channels), and the Vita can't decode above 720p. Try Audio only.
 - **Chat says "reading only":** sign out and back in once to grant the chat permission.
 - **"Getting a sign-in code" fails:** check the Client ID, and that the Twitch app's Client Type is **Public**.
 - **Anything else:** LiveVita writes a log to `ux0:data/LiveVita/log.txt`, and the previous run's log to `log_prev.txt`.
@@ -135,7 +134,7 @@ If you want more out of the Wi-Fi itself, that lives at the system level, not in
 
 ## How it works
 
-- `src/twitch.c`: sign-in and lists through Twitch's official API (Helix), using the device code flow. For video it gets a playback token the way Twitch's website player does (the official API has no call for this, so Twitch could change it). Then it reads the HLS master playlist and picks an H.264 variant for the chosen quality (up to an experimental 1080p60), or audio only.
+- `src/twitch.c`: sign-in and lists through Twitch's official API (Helix), using the device code flow. For video it gets a playback token the way Twitch's website player does (the official API has no call for this, so Twitch could change it). Then it reads the HLS master playlist and picks an H.264 variant for the chosen quality (up to 720p), or audio only.
 - `src/chat.c`: an IRC client for `irc.chat.twitch.tv:6697` over TLS on its own thread. It uses IRCv3 tags, reconnects automatically, keeps a 100-message ring buffer, and reads anonymously (`justinfanNNNNN`) when not signed in.
 - `src/imgcache.c`: downloads thumbnails, box art and emotes on a background thread. Textures are made and freed on the UI thread, with a least-recently-used limit of about 10 MB.
 - `src/home.c`, `src/playerui.c`, `src/ui.c`: the two layouts, the player and chat panel, input (buttons, DualShock ports, touch) and console detection (`sceKernelIsPSVitaTV`, `sceCtrlGetControllerPortInfo`).
