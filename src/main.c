@@ -567,10 +567,11 @@ void app_logout(void)
 
 static void start_playback(const char *url)
 {
-    /* HD decoder OFF. It uses the firmware's internal decoder entry points and large 1080p buffers,
-     * which exhausted GPU memory and crashed some consoles, so we keep the stable public decoder that
-     * the engine shipped with. 720p (incl. 60 fps), 480p and 360p all play on it. */
-    tsp_set_options(0, 720);
+    /* HD decoder ON only for the explicit, experimental 1080p option (30 fps, see tw_pick_variant). It uses
+     * the firmware's internal decoder entry points, which stress GPU memory and can crash some consoles, so
+     * every other quality stays on the stable public decoder that the engine shipped with. */
+    int hd = (app.quality == TWQ_1080P);
+    tsp_set_options(hd, hd ? 1080 : 720);
     int r = tsp_start(url);
     plog("player: start %s (%s) -> %d", app.playing.login, res_label, r);
     if (r != 0) { app_set_status("The player could not start (see log.txt)"); app_back_from_player(); return; }

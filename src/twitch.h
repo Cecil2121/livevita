@@ -53,7 +53,7 @@ typedef struct {
 } TwVideo;
 
 /* video quality choices for tw_playback_url */
-enum { TWQ_720P60, TWQ_720P30, TWQ_480P30, TWQ_360P30, TWQ_AUDIO, TWQ_COUNT };
+enum { TWQ_1080P, TWQ_720P60, TWQ_720P30, TWQ_480P30, TWQ_360P30, TWQ_AUDIO, TWQ_COUNT };
 extern const char *const TWQ_NAME[TWQ_COUNT];
 
 /* Client ID of the app registered at dev.twitch.tv (Client Type: Public). */

@@ -98,7 +98,7 @@ LiveVita does **not** implement any ad-removal proxy, and never will. The ad-fre
 | Triangle (or tap the chat box) | Type a chat message |
 | Up / Down (or drag the chat) | Scroll chat back / return to live |
 | L / R | Lower / higher quality |
-| START | Quality menu (720p60, 720p30, 480p30, 360p30, Audio only) |
+| START | Quality menu (1080p experimental, 720p60, 720p30, 480p30, 360p30, Audio only) |
 | SELECT | Playback stats |
 
 ## Profile and followed categories
@@ -112,7 +112,8 @@ Twitch removed the ability for apps to follow channels on your account in 2021, 
 
 ## Settings
 
-- **Video quality:** 720p60, 720p30, 480p30 (default), 360p30 or Audio only, set in Options or from the in-player quality menu (START). 60 fps is only used when you pick a 60 fps option. 1080p is not offered: the Vita can't decode it reliably, and the HD decoder path needed for it crashed some consoles, so LiveVita stays on the stable decoder that tops out at 720p.
+- **Video quality:** 720p60, 720p30, 480p30 (default), 360p30 or Audio only, set in Options or from the in-player quality menu (START). 60 fps is only used when you pick a 60 fps option.
+- **Experimental 1080p (30 fps):** an opt-in option for channels that broadcast a 1080p30 source. It is the one quality that uses the Vita's HD decoder (the firmware's internal decoder path). **That path can crash the GPU / the app on some consoles — if it does, reboot the Vita and pick 720p instead.** It is deliberately capped at 30 fps (1080p60 is too heavy), and the HD decoder is used *only* when you pick this option, so 720p and below are never affected by it. If a channel only offers a 1080p60 source, this option falls back to 720p. Leave it alone if you want a rock-solid stream; 720p60 is the recommended ceiling.
 - **Layout:** Auto (PS TV or a DualShock → TV layout, otherwise Handheld), Handheld or TV.
 - **Chat:** On / Off.
 - **Account:** sign out.
@@ -126,7 +127,8 @@ If you want more out of the Wi-Fi itself, that lives at the system level, not in
 ## Troubleshooting
 
 - **Stutters:** choose 360p30 or 480p30, and stay close to your router. 720p60 wants strong Wi-Fi.
-- **"This channel only streams above 720p":** the channel has no smaller versions (Twitch only adds them for some channels), and the Vita can't decode above 720p. Try Audio only.
+- **"This channel only streams above 720p":** the channel has no smaller versions (Twitch only adds them for some channels). Try the experimental 1080p option, or Audio only.
+- **Crash / freeze on 1080p:** that's the experimental HD decoder path. Reboot the Vita and switch to 720p; it won't happen on the other qualities.
 - **Chat says "reading only":** sign out and back in once to grant the chat permission.
 - **"Getting a sign-in code" fails:** check the Client ID, and that the Twitch app's Client Type is **Public**.
 - **Anything else:** LiveVita writes a log to `ux0:data/LiveVita/log.txt`, and the previous run's log to `log_prev.txt`.
