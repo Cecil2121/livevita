@@ -125,7 +125,7 @@ void app_set_status(const char *msg)
 /* ---------------------------------------------------------------- worker thread */
 
 enum { JOB_NONE, JOB_CHECK, JOB_DEVICE_START, JOB_DEVICE_POLL, JOB_LIST, JOB_GAMES, JOB_PLAY, JOB_INFO, JOB_LOGOUT,
-       JOB_USER, JOB_VODS, JOB_VOD, JOB_ME, JOB_CLIPS, JOB_CLIP, JOB_GAMEDESC };
+       JOB_USER, JOB_VODS, JOB_VOD, JOB_ME, JOB_CLIPS, JOB_CLIP, JOB_GAMEDESC, JOB_HERODESC };
 
 static pthread_mutex_t job_mx = PTHREAD_MUTEX_INITIALIZER;
 static pthread_cond_t job_cv = PTHREAD_COND_INITIALIZER;
@@ -147,7 +147,7 @@ static int res_interval = 5, res_expires = 1800;
 static char *res_url;
 static char res_label[24];
 static char res_err[160];
-static char res_gamedesc[600];
+static char res_gamedesc[600], res_herodesc[600];
 
 /* channels followed on this Vita, merged into the Following lists (worker thread) */
 static int cmp_stream_name(const void *a, const void *b) { return strcasecmp(((const TwStream *)a)->name, ((const TwStream *)b)->name); }
@@ -214,6 +214,7 @@ static void *worker(void *arg)
         case JOB_CLIP: r = tw_clip_url(a, q, res_url, HLS_URL_MAX, res_label, sizeof res_label); break;
         case JOB_ME: r = tw_user_info(a, &res_me); break;
         case JOB_GAMEDESC: r = tw_game_desc(a, res_gamedesc, sizeof res_gamedesc); break;
+        case JOB_HERODESC: r = tw_game_desc(a, res_herodesc, sizeof res_herodesc); break;
         }
         if (r < 0) snprintf(res_err, sizeof res_err, "%s", tw_error());
 
@@ -294,7 +295,7 @@ static int state = ST_CHECKING;
 static unsigned login_next_poll, login_expires_at, info_next;
 static int login_have_code;
 static int play_pending_q = -1;                              /* a quality change waiting for the worker */
-static int pending_user, pending_vods, pending_me, pending_clips, pending_gamedesc;     /* the channel's profile / videos / category blurb, when the worker is free */
+static int pending_user, pending_vods, pending_me, pending_clips, pending_gamedesc, pending_herodesc;   /* the channel's profile / videos / category blurb, when the worker is free */
 
 static void start_login(void)
 {
@@ -365,6 +366,18 @@ void app_open_game(const char *id, const char *name)
 }
 
 void app_close_game(void) { app.game_open = 0; }
+
+/* The Home rows ask for the blurb of whichever category is highlighted; it loads
+ * in the background and is cached, so scrolling the row only fetches each one once. */
+void app_hero_category(const char *id)
+{
+    if (!id || !id[0]) { app.hero_cat_id[0] = 0; app.hero_cat_desc[0] = 0; app.hero_cat_desc_loaded = 0; pending_herodesc = 0; return; }
+    if (!strcmp(id, app.hero_cat_id)) return;                /* same category still highlighted */
+    snprintf(app.hero_cat_id, sizeof app.hero_cat_id, "%s", id);
+    app.hero_cat_desc[0] = 0;
+    app.hero_cat_desc_loaded = 0;
+    pending_herodesc = 1;
+}
 
 void app_open_stream(const TwStream *s)
 {
@@ -794,6 +807,11 @@ int main(void)
         } else if (jd == JOB_GAMEDESC) {
             if (jr == 0) snprintf(app.game_desc, sizeof app.game_desc, "%s", res_gamedesc);
             app.game_desc_loaded = 1;
+        } else if (jd == JOB_HERODESC) {
+            if (!strcmp(job_arg, app.hero_cat_id)) {            /* ignore a result for a category we've since scrolled past */
+                if (jr == 0) snprintf(app.hero_cat_desc, sizeof app.hero_cat_desc, "%s", res_herodesc);
+                app.hero_cat_desc_loaded = 1;
+            }
         } else if (jd == JOB_VODS) {
             app.vods.loaded = 1;
             if (jr >= 0) { memcpy(app.vods.items, res_videos, sizeof(TwVideo) * (size_t)jr); app.vods.n = jr; }
@@ -837,6 +855,7 @@ int main(void)
                 else if (job_start(JOB_CLIPS, 0, 0, uid)) pending_clips = 0;
             }
             else if (pending_gamedesc && app.game_open && app.game_id[0]) { if (job_start(JOB_GAMEDESC, 0, 0, app.game_id)) pending_gamedesc = 0; }
+            else if (pending_herodesc && app.hero_cat_id[0]) { if (job_start(JOB_HERODESC, 0, 0, app.hero_cat_id)) pending_herodesc = 0; }
             else if (pending_me && app.signed_in) { if (job_start(JOB_ME, 0, 0, tw_user())) pending_me = 0; }
             else if (pending_user && state == ST_PLAYING) { if (job_start(JOB_USER, 0, 0, app.playing.login)) pending_user = 0; }
             else if (pending_games) app_load_games();

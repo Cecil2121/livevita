@@ -163,9 +163,15 @@ static void tv_hero_game(const TwGame *g)
     int px = SCREEN_W - 158 - 60;
     draw_picture(img_get(g->box_art_big[0] ? g->box_art_big : g->box_art), px, HERO_Y, 158, HERO_H);
     char f[160];
-    text(30, HERO_Y + 30, T_DIM, 0.75f, "CATEGORY");
-    fit(f, sizeof f, g->name, 1.45f, px - 60);
-    text(30, HERO_Y + 74, T_TEXT, 1.45f, f);
+    text(30, HERO_Y + 28, T_DIM, 0.72f, "CATEGORY");
+    fit(f, sizeof f, g->name, 1.3f, px - 60);
+    text(30, HERO_Y + 66, T_TEXT, 1.3f, f);
+    int match = !strcmp(app.hero_cat_id, g->id);
+    int blank = match && app.hero_cat_desc_loaded && !app.hero_cat_desc[0];
+    const char *d = match && app.hero_cat_desc_loaded
+                  ? (app.hero_cat_desc[0] ? app.hero_cat_desc : "No description for this category.")
+                  : "Loading category info...";
+    draw_wrapped(30, HERO_Y + 96, px - 60, 0.72f, blank ? T_DIM : T_TEXT, d, 4, 23);
     text(30, HERO_Y + 196, T_DIM, 0.68f, "X  See live channels");
 }
 
@@ -250,9 +256,9 @@ static void tv_draw_home(void)
     /* the preview */
     int k = kinds[g_row], c = g_col[k];
     if (row_count(k) && c >= row_count(k)) c = g_col[k] = row_count(k) - 1;
-    if (!row_count(k)) tv_hero_message(app_list_loading(k == ROW_TOP ? LIST_FEATURED : LIST_FOLLOWING) || app_games_loading() ? "Loading..." : "Nothing here right now", NULL);
-    else if (is_cat_row(k)) tv_hero_game(row_game(k, c));
-    else tv_hero_stream(&app.lists[k == ROW_FOLLOW ? LIST_FOLLOWING : LIST_FEATURED].items[c]);
+    if (!row_count(k)) { app_hero_category(""); tv_hero_message(app_list_loading(k == ROW_TOP ? LIST_FEATURED : LIST_FOLLOWING) || app_games_loading() ? "Loading..." : "Nothing here right now", NULL); }
+    else if (is_cat_row(k)) { const TwGame *g = row_game(k, c); app_hero_category(g->id); tv_hero_game(g); }
+    else { app_hero_category(""); tv_hero_stream(&app.lists[k == ROW_FOLLOW ? LIST_FOLLOWING : LIST_FEATURED].items[c]); }
     /* the rows: the focused one at the top of the area, the next one below */
     static float vy;
     float target = 0;

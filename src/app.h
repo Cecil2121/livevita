@@ -68,6 +68,8 @@ typedef struct {
     char game_name[80], game_id[24];
     char game_desc[600];                /* the open category's description (Twitch's category blurb) */
     int game_desc_loaded;
+    char hero_cat_id[24], hero_cat_desc[600];   /* description of the category highlighted in a Home row */
+    int hero_cat_desc_loaded;
     StreamList lists[LIST_COUNT];
     GameList games;
     int settings_sel;
@@ -117,6 +119,7 @@ void app_load_list(int list);
 void app_load_games(void);
 void app_open_game(const char *id, const char *name);   /* id "" = top live streams */
 void app_close_game(void);
+void app_hero_category(const char *id);                 /* request the blurb for a highlighted Home category */
 void app_open_stream(const TwStream *s);
 void app_change_quality(int q);
 void app_search_prompt(void);
