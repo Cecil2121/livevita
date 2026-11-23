@@ -796,6 +796,32 @@ int tw_clips(const char *user_id, TwVideo *out, int max)
     return r;
 }
 
+int tw_game_desc(const char *game_id, char *out, size_t cap)
+{
+    if (out && cap) out[0] = 0;
+    if (!game_id || !game_id[0]) return -1;
+    char body[200], *resp = NULL;
+    snprintf(body, sizeof body, "{\"query\":\"query { game(id: \\\"%s\\\") { description } }\"}", game_id);
+    char hdr[120];
+    snprintf(hdr, sizeof hdr, "Client-ID: %s\r\n", WEB_PLAYER_CLIENT_ID);
+    int st = http("POST", "https://gql.twitch.tv/gql", body, "application/json", hdr, &resp);
+    if (st != 200) { if (st > 0) api_err("Loading the category", st, resp); free(resp); return -1; }
+    int r = -1;
+    Json j;
+    if (!json_parse(&j, resp)) {
+        int game = json_key(&j, json_key(&j, 0, "data"), "game");
+        if (game > 0) {
+            json_get_str(&j, game, "description", out, cap);
+            for (char *p = out; *p; p++) if (*p == '\n' || *p == '\r' || *p == '\t') *p = ' ';   /* one flowing blurb */
+            if (out[0]) r = 0;
+        }
+        json_free(&j);
+    } else set_err("Bad answer from Twitch");
+    free(resp);
+    plog("twitch: game_desc %s -> %d (%d chars)", game_id, r, (int)strlen(out));
+    return r;
+}
+
 int tw_clip_url(const char *clip_id, int quality, char *url, size_t cap, char *label, size_t lcap)
 {
     char body[700], *resp = NULL;

@@ -99,6 +99,8 @@ int  tw_vod_url(const char *video_id, int quality, char *url, size_t cap, char *
 int  tw_clips(const char *user_id, TwVideo *out, int max);
 /* the direct MP4 of a clip (progressive, not HLS). label gets e.g. "480p". 0 = ok. */
 int  tw_clip_url(const char *clip_id, int quality, char *url, size_t cap, char *label, size_t lcap);
+/* a category's description (the IGDB blurb Twitch shows on a category page), by game id. 0 = ok. */
+int  tw_game_desc(const char *game_id, char *out, size_t cap);
 
 /* The HLS playlist (one variant, H.264 up to 720p30, or audio only) for a live channel.
  * label gets what was chosen ("480p30", "audio only"). 0 = ok. */

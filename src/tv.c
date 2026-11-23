@@ -169,6 +169,36 @@ static void tv_hero_game(const TwGame *g)
     text(30, HERO_Y + 196, T_DIM, 0.68f, "X  See live channels");
 }
 
+/* box art for a category id, looked up in the loaded categories / followed ones */
+static const char *cat_box_art(const char *id)
+{
+    for (int i = 0; i < app.games.n; i++)
+        if (!strcmp(app.games.items[i].id, id))
+            return app.games.items[i].box_art_big[0] ? app.games.items[i].box_art_big : app.games.items[i].box_art;
+    for (int i = 0; i < favcat_count(); i++) {
+        const TwGame *g = favcat_get(i);
+        if (g && !strcmp(g->id, id)) return g->box_art_big[0] ? g->box_art_big : g->box_art;
+    }
+    return "";
+}
+
+/* the hero for an open category: box art, name and Twitch's description blurb */
+static void tv_hero_category(void)
+{
+    int px = SCREEN_W - 158 - 60;
+    const char *box = cat_box_art(app.game_id);
+    if (box[0]) draw_picture(img_get(box), px, HERO_Y, 158, HERO_H);
+    else rect(px, HERO_Y, 158, HERO_H, T_PANEL);
+    char f[160];
+    text(30, HERO_Y + 28, T_DIM, 0.72f, "CATEGORY");
+    fit(f, sizeof f, app.game_name, 1.3f, px - 60);
+    text(30, HERO_Y + 66, T_TEXT, 1.3f, f);
+    const char *d = !app.game_desc_loaded ? "Loading category info..."
+                  : app.game_desc[0] ? app.game_desc : "No description for this category.";
+    draw_wrapped(30, HERO_Y + 96, px - 60, 0.72f, app.game_desc[0] || !app.game_desc_loaded ? T_TEXT : T_DIM, d, 4, 23);
+    text(30, HERO_Y + 196, T_DIM, 0.68f, "X  Watch a live channel below");
+}
+
 static void tv_hero_message(const char *a, const char *b)
 {
     rect(24, HERO_Y, SCREEN_W - 48, HERO_H, T_PANEL);
@@ -323,10 +353,9 @@ static void draw_stream_grid(StreamList *L, int list, const TGrid *g, int focus)
 static void draw_browse(void)
 {
     if (!app.games.loaded && !app_games_loading()) app_load_games();
-    if (app.game_open) {                                     /* a category: preview + its channels */
+    if (app.game_open) {                                     /* a category: its info + channels (like Twitch's category page) */
         StreamList *L = &app.lists[LIST_GAME];
-        if (L->n) tv_hero_stream(&L->items[L->sel < L->n ? L->sel : 0]);
-        else tv_hero_message(app.game_name, app_list_loading(LIST_GAME) ? "Loading live channels..." : NULL);
+        tv_hero_category();
         char ct[160];
         snprintf(ct, sizeof ct, "%s   %s", app.game_name, app_cat_followed() ? "-  Following (Square: unfollow)" : "-  Square: follow");
         text(24, ROWS_Y - 6, app_cat_followed() ? T_ACCENT : T_DIM, 0.8f, ct);

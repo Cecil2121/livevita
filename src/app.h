@@ -66,6 +66,8 @@ typedef struct {
     int view;
     int game_open;                      /* VIEW_GAMES: showing one category's streams */
     char game_name[80], game_id[24];
+    char game_desc[600];                /* the open category's description (Twitch's category blurb) */
+    int game_desc_loaded;
     StreamList lists[LIST_COUNT];
     GameList games;
     int settings_sel;

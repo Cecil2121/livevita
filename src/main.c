@@ -125,7 +125,7 @@ void app_set_status(const char *msg)
 /* ---------------------------------------------------------------- worker thread */
 
 enum { JOB_NONE, JOB_CHECK, JOB_DEVICE_START, JOB_DEVICE_POLL, JOB_LIST, JOB_GAMES, JOB_PLAY, JOB_INFO, JOB_LOGOUT,
-       JOB_USER, JOB_VODS, JOB_VOD, JOB_ME, JOB_CLIPS, JOB_CLIP };
+       JOB_USER, JOB_VODS, JOB_VOD, JOB_ME, JOB_CLIPS, JOB_CLIP, JOB_GAMEDESC };
 
 static pthread_mutex_t job_mx = PTHREAD_MUTEX_INITIALIZER;
 static pthread_cond_t job_cv = PTHREAD_COND_INITIALIZER;
@@ -147,6 +147,7 @@ static int res_interval = 5, res_expires = 1800;
 static char *res_url;
 static char res_label[24];
 static char res_err[160];
+static char res_gamedesc[600];
 
 /* channels followed on this Vita, merged into the Following lists (worker thread) */
 static int cmp_stream_name(const void *a, const void *b) { return strcasecmp(((const TwStream *)a)->name, ((const TwStream *)b)->name); }
@@ -212,6 +213,7 @@ static void *worker(void *arg)
         case JOB_CLIPS: r = tw_clips(a, res_videos, MAX_VIDEOS); break;
         case JOB_CLIP: r = tw_clip_url(a, q, res_url, HLS_URL_MAX, res_label, sizeof res_label); break;
         case JOB_ME: r = tw_user_info(a, &res_me); break;
+        case JOB_GAMEDESC: r = tw_game_desc(a, res_gamedesc, sizeof res_gamedesc); break;
         }
         if (r < 0) snprintf(res_err, sizeof res_err, "%s", tw_error());
 
@@ -292,7 +294,7 @@ static int state = ST_CHECKING;
 static unsigned login_next_poll, login_expires_at, info_next;
 static int login_have_code;
 static int play_pending_q = -1;                              /* a quality change waiting for the worker */
-static int pending_user, pending_vods, pending_me, pending_clips;                       /* the channel's profile / videos, when the worker is free */
+static int pending_user, pending_vods, pending_me, pending_clips, pending_gamedesc;     /* the channel's profile / videos / category blurb, when the worker is free */
 
 static void start_login(void)
 {
@@ -353,6 +355,9 @@ void app_open_game(const char *id, const char *name)
 {
     snprintf(app.game_id, sizeof app.game_id, "%s", id);
     snprintf(app.game_name, sizeof app.game_name, "%s", name);
+    app.game_desc[0] = 0;
+    app.game_desc_loaded = 0;
+    pending_gamedesc = id[0] ? 1 : 0;                        /* "" = top live streams, no category blurb */
     app.game_open = 1;
     app.lists[LIST_GAME].n = app.lists[LIST_GAME].sel = app.lists[LIST_GAME].top = 0;
     app.lists[LIST_GAME].loaded = 0;
@@ -786,6 +791,9 @@ int main(void)
             if (jr == 0 && !strcasecmp(res_user.login, app.playing.login)) { app.user = res_user; app.user_loaded = 1; }
         } else if (jd == JOB_ME) {
             if (jr == 0) { app.me = res_me; app.me_loaded = 1; }
+        } else if (jd == JOB_GAMEDESC) {
+            if (jr == 0) snprintf(app.game_desc, sizeof app.game_desc, "%s", res_gamedesc);
+            app.game_desc_loaded = 1;
         } else if (jd == JOB_VODS) {
             app.vods.loaded = 1;
             if (jr >= 0) { memcpy(app.vods.items, res_videos, sizeof(TwVideo) * (size_t)jr); app.vods.n = jr; }
@@ -828,6 +836,7 @@ int main(void)
                 if (!uid[0]) { pending_clips = 0; app.clips.loaded = 1; snprintf(app.clips.err, sizeof app.clips.err, "This channel's clips cannot be found."); }
                 else if (job_start(JOB_CLIPS, 0, 0, uid)) pending_clips = 0;
             }
+            else if (pending_gamedesc && app.game_open && app.game_id[0]) { if (job_start(JOB_GAMEDESC, 0, 0, app.game_id)) pending_gamedesc = 0; }
             else if (pending_me && app.signed_in) { if (job_start(JOB_ME, 0, 0, tw_user())) pending_me = 0; }
             else if (pending_user && state == ST_PLAYING) { if (job_start(JOB_USER, 0, 0, app.playing.login)) pending_user = 0; }
             else if (pending_games) app_load_games();
